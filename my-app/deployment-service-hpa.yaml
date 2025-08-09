@@ -23,7 +23,7 @@ spec:
               cpu: "300m"
               memory: "812Mi"
             limits:
-              cpu: "1Gi"
+              cpu: "600m"
               memory: "2000Mi"
 ---
 # Service
