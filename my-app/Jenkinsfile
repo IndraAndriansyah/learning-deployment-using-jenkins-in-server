@@ -2,58 +2,70 @@ pipeline {
     agent any
 
     environment {
-        OPENSHIFT_PROJECT = 'indraandriansyah-dev'  // Ganti dengan nama project OpenShift Anda
-        APP_NAME = 'my-nextjs-app'  // Nama aplikasi yang Anda inginkan di OpenShift
-        TOKEN_CREDS_ID = '5e05a171-1bbd-456e-9ac5-61bf0c4e1e5d' // token creds id oc
-        GITHUB_REPO = 'https://github.com/IndraAndriansyah/learning-deployment-using-jenkins-in-server.git'  // Ganti dengan URL repository Anda
-        OPENSHIFT_YAML = 'my-app/deployment-service-hpa.yaml'  // Ganti dengan lokasi file YAML Anda
+        OPENSHIFT_PROJECT = 'indraandriansyah-dev'
+        APP_NAME = 'my-nextjs-app'
+        TOKEN_CREDS_ID = '5e05a171-1bbd-456e-9ac5-61bf0c4e1e5d'
+        GITHUB_REPO = 'https://github.com/IndraAndriansyah/learning-deployment-using-jenkins-in-server.git'
+        OPENSHIFT_YAML = 'my-app/deployment-service-hpa.yaml'
     }
 
     stages {
-      // HAPUS ini jika tidak dibutuhkan
-        stage('Checkout Code github') {
+        stage('Checkout Code') {
             steps {
-                git branch: 'main', url: "${GITHUB_REPO}"
+                checkout scm
             }
         }
 
+        stage('Checkout Code github') {
+            steps {
+                git url: "${GITHUB_REPO}"
+            }
+        }
 
         stage('Deploy to OpenShift') {
             steps {
-               script {
-                // Build dulu
-                sh '''
-                    oc new-build --name=${APP_NAME} --binary --strategy=docker || echo "Build already exists"
-                    oc start-build ${APP_NAME} --from-dir=. --follow
-                '''
+                script {
+                    withCredentials([string(credentialsId: TOKEN_CREDS_ID, variable: 'OC_TOKEN')]) {
+                        sh '''
+                            oc login --token=$OC_TOKEN --server=https://api.rm1.0a51.p1.openshiftapps.com:6443
+                        '''
+                    }
 
-                // Ambil nama image stream dari build
-                def imageUrl = sh(
-                    script: "oc get is ${APP_NAME} -o jsonpath='{.status.dockerImageRepository}'",
-                    returnStdout: true
-                ).trim()
+                    sh "oc project ${OPENSHIFT_PROJECT}"
 
-                echo "Image URL: ${imageUrl}"
+                    // Build & start
+                    sh '''
+                        oc new-build --name=${APP_NAME} --binary --strategy=docker || echo "Build already exists"
+                        oc start-build ${APP_NAME} --from-dir=. --follow
+                    '''
 
-                // Ganti image di YAML secara dinamis (opsional, atau pakai template)
-                writeFile file: 'my-app/deployment-service-hpa-patched.yaml',
-                          text: new File('my-app/deployment-service-hpa.yaml')
-                              .text
-                              .replaceAll("image: .*", "image: ${imageUrl}:latest")
+                    // Ambil image URL dari image stream
+                    def imageUrl = sh(
+                        script: "oc get is ${APP_NAME} -o jsonpath='{.status.dockerImageRepository}'",
+                        returnStdout: true
+                    ).trim()
 
-                // Apply yaml baru
-                sh "oc apply -f my-app/deployment-service-hpa-patched.yaml"
+                    echo "✅ Image URL: ${imageUrl}"
+
+                    // Patch file YAML
+                    def yamlContent = readFile("${OPENSHIFT_YAML}")
+                    def patchedYaml = yamlContent.replaceAll("image: .*", "image: ${imageUrl}:latest")
+
+                    writeFile file: 'my-app/deployment-service-hpa-patched.yaml', text: patchedYaml
+
+                    // Apply YAML yang sudah di-patch
+                    sh "oc apply -f my-app/deployment-service-hpa-patched.yaml"
                 }
-
+            }
         }
     }
 
     post {
         success {
-            echo 'Build and deploy succeeded!'
+            echo '✅ Build and deploy succeeded!'
         }
         failure {
-            echo 'Build or deploy failed.'
+            echo '❌ Build or deploy failed.'
         }
     }
 }
