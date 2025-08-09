@@ -10,18 +10,13 @@ pipeline {
     }
 
     stages {
-      stage('Checkout Code') {
+      // HAPUS ini jika tidak dibutuhkan
+        stage('Checkout Code github') {
             steps {
-                checkout scm
+                git branch: 'main', url: "${GITHUB_REPO}"
             }
         }
 
-        stage('Checkout Code github') {
-            steps {
-                // Mengambil kode dari GitHub
-                git url: "${GITHUB_REPO}"
-            }
-        }
 
         stage('Deploy to OpenShift') {
             steps {
