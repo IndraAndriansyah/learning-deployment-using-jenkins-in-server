@@ -35,8 +35,8 @@ pipeline {
                     sh '''
                         oc new-build --name=${APP_NAME} --binary --strategy=docker || echo "Build already exists"
                         oc start-build ${APP_NAME} --from-dir=. --follow
-                        oc get route
-                        oc get route -n openshift-image-registry
+                        pc get is
+                        
 
                     '''
 
