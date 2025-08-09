@@ -10,7 +10,13 @@ pipeline {
     }
 
     stages {
-        stage('Checkout Code') {
+      stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Checkout Code github') {
             steps {
                 // Mengambil kode dari GitHub
                 git url: "${GITHUB_REPO}"
