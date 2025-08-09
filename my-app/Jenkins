@@ -6,7 +6,7 @@ pipeline {
         APP_NAME = 'my-nextjs-app'  // Nama aplikasi yang Anda inginkan di OpenShift
         TOKEN_CREDS_ID = '5e05a171-1bbd-456e-9ac5-61bf0c4e1e5d' // token creds id oc
         GITHUB_REPO = 'https://github.com/IndraAndriansyah/learning-deployment-using-jenkins-in-server.git'  // Ganti dengan URL repository Anda
-        OPENSHIFT_YAML = 'openshift/deployment.yaml'  // Ganti dengan lokasi file YAML Anda
+        OPENSHIFT_YAML = 'my-app/openshift/deployment.yaml'  // Ganti dengan lokasi file YAML Anda
     }
 
     stages {
