@@ -1,0 +1,66 @@
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-nextjs-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-nextjs-app
+  template:
+    metadata:
+      labels:
+        app: my-nextjs-app
+    spec:
+      containers:
+        - name: nextjs
+          image: default-route-openshift-image-registry.apps.rm1.0a51.p1.openshiftapps.com/indraandriansyah-dev/my-nextjs-app:latest
+          ports:
+            - containerPort: 3000
+          resources:
+            requests:
+              cpu: "300m"
+              memory: "811.8Mi"
+            limits:
+              cpu: "600m"
+              memory: "1623.6Mi"
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-nextjs-service
+spec:
+  selector:
+    app: my-nextjs-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+---
+# HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-nextjs-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-nextjs-app
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 40
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
