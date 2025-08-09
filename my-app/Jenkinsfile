@@ -10,11 +10,13 @@ pipeline {
     }
 
     stages {
+      // HAPUS ini jika tidak dibutuhkan
         stage('Checkout Code github') {
             steps {
                 git branch: 'main', url: "${GITHUB_REPO}"
             }
         }
+
 
         stage('Deploy to OpenShift') {
             steps {
@@ -29,27 +31,15 @@ pipeline {
                     // Pilih project OpenShift
                     sh "oc project ${OPENSHIFT_PROJECT}"
 
-                    // Build & start
+                    // Buat build dan deploy aplikasi menggunakan perintah oc new-build
                     sh '''
                         oc new-build --name=${APP_NAME} --binary --strategy=docker || echo "Build already exists"
                         oc start-build ${APP_NAME} --from-dir=. --follow
+                        oc get pods
                     '''
 
-                    // Ambil image URL dari image stream
-                    def imageUrl = sh(
-                        script: "oc get is ${APP_NAME} -o jsonpath='{.status.dockerImageRepository}'",
-                        returnStdout: true
-                    ).trim()
-
-                    echo "✅ Image URL: ${imageUrl}"
-
-                    // Patch file YAML
-                    def yamlContent = readFile("${OPENSHIFT_YAML}")
-                    def patchedYaml = yamlContent.replaceAll("image: .*", "image: ${imageUrl}:latest")
-                    writeFile file: 'my-app/deployment-service-hpa-patched.yaml', text: patchedYaml
-
-                    // Apply YAML yang sudah di-patch
-                    sh "oc apply -f my-app/deployment-service-hpa-patched.yaml"
+                         // Terapkan file YAML ke OpenShift (misalnya deployment, service, route)
+                    sh "oc apply -f ${OPENSHIFT_YAML}"
                 }
             }
         }
