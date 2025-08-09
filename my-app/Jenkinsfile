@@ -20,29 +20,31 @@ pipeline {
 
         stage('Deploy to OpenShift') {
             steps {
-                script {
-                    // Login ke OpenShift
-                    withCredentials([string(credentialsId: TOKEN_CREDS_ID, variable: 'OC_TOKEN')]) {
-                        sh '''
-                            oc login --token=$OC_TOKEN --server=https://api.rm1.0a51.p1.openshiftapps.com:6443
-                        '''
-                    }
+               script {
+                // Build dulu
+                sh '''
+                    oc new-build --name=${APP_NAME} --binary --strategy=docker || echo "Build already exists"
+                    oc start-build ${APP_NAME} --from-dir=. --follow
+                '''
 
-                    // Pilih project OpenShift
-                    sh "oc project ${OPENSHIFT_PROJECT}"
+                // Ambil nama image stream dari build
+                def imageUrl = sh(
+                    script: "oc get is ${APP_NAME} -o jsonpath='{.status.dockerImageRepository}'",
+                    returnStdout: true
+                ).trim()
 
-                    // Buat build dan deploy aplikasi menggunakan perintah oc new-build
-                    sh '''
-                        if ! oc get bc ${APP_NAME} > /dev/null 2>&1; then
-                            oc new-build --name=${APP_NAME} --binary --strategy=docker
-                        fi
-                        oc start-build ${APP_NAME} --from-dir=. --follow
-                    '''
+                echo "Image URL: ${imageUrl}"
 
-                         // Terapkan file YAML ke OpenShift (misalnya deployment, service, route)
-                    sh "oc apply -f ${OPENSHIFT_YAML}"
+                // Ganti image di YAML secara dinamis (opsional, atau pakai template)
+                writeFile file: 'my-app/deployment-service-hpa-patched.yaml',
+                          text: new File('my-app/deployment-service-hpa.yaml')
+                              .text
+                              .replaceAll("image: .*", "image: ${imageUrl}:latest")
+
+                // Apply yaml baru
+                sh "oc apply -f my-app/deployment-service-hpa-patched.yaml"
                 }
-            }
+
         }
     }
 
