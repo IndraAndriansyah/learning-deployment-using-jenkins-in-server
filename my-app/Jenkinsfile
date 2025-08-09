@@ -34,7 +34,7 @@ pipeline {
                     // Buat build dan deploy aplikasi menggunakan perintah oc new-build
                     sh '''
                         oc new-build --name=${APP_NAME} --binary --strategy=docker || echo "Build already exists"
-                        oc start-build ${APP_NAME} --from-dir=. --follow
+                        oc start-build ${APP_NAME} --from-dir=my-app --follow
                         oc get is
 
 
