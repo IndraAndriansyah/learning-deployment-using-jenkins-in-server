@@ -33,9 +33,12 @@ pipeline {
 
                     // Buat build dan deploy aplikasi menggunakan perintah oc new-build
                     sh '''
-                        oc new-build --name=${APP_NAME} --binary --strategy=docker
+                        if ! oc get bc ${APP_NAME} > /dev/null 2>&1; then
+                            oc new-build --name=${APP_NAME} --binary --strategy=docker
+                        fi
                         oc start-build ${APP_NAME} --from-dir=. --follow
-                        '''
+                    '''
+
                          // Terapkan file YAML ke OpenShift (misalnya deployment, service, route)
                     sh "oc apply -f ${OPENSHIFT_YAML}"
                 }
